@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HazeNotes</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<style>
+  :root{--bg:#000000;--fg:#ffffff;--muted:#cccccc;--bar-border:#333333;--tab-bg:#1a1a1a;--tab-border:#333333;--tab-fg:#eeeeee;--tab-active-bg:#222222;--tab-active-border:#ffffff;--tab-active-fg:#ffffff;--tab-x:#666666;--tab-x-hover-bg:#333333;--tab-add:#888888;--tab-add-hover:#ffffff;--tab-focus-bg:#111111;--tab-focus-ring:#ffffff;--ph:#444444;--scrollbar:#333333;--icon:#aaaaaa;--icon-hover:#ffffff;--icon-bg-hover:#222222;--nav:#cccccc;--nav-hover:#ffffff;--nav-hover-bg:#333333;--fade:rgba(0,0,0,0)}
+  [data-theme=light]{--bg:#ffffff;--fg:#000000;--muted:#444444;--bar-border:#dddddd;--tab-bg:#eeeeee;--tab-border:#bbbbbb;--tab-fg:#111111;--tab-active-bg:#f5f5f5;--tab-active-border:#000000;--tab-active-fg:#000000;--tab-x:#666666;--tab-x-hover-bg:#dddddd;--tab-add:#888888;--tab-add-hover:#000000;--tab-focus-bg:#fafafa;--tab-focus-ring:#000000;--ph:#888888;--scrollbar:#bbbbbb;--icon:#555555;--icon-hover:#000000;--icon-bg-hover:#ddd}
+  @media (prefers-color-scheme:light){:root:not([data-theme]){--bg:#ffffff;--fg:#000000;--muted:#444444;--bar-border:#dddddd;--tab-bg:#eeeeee;--tab-border:#bbbbbb;--tab-fg:#111111;--tab-active-bg:#f5f5f5;--tab-active-border:#000000;--tab-active-fg:#000000;--tab-x:#666666;--tab-x-hover-bg:#dddddd;--tab-add:#888888;--tab-add-hover:#000000;--tab-focus-bg:#fafafa;--tab-focus-ring:#000000;--ph:#888888;--scrollbar:#bbbbbb;--icon:#555555;--icon-hover:#000000;--icon-bg-hover:#dddddd;--nav:#444444;--nav-hover:#000000;--nav-hover-bg:#dddddd;--fade:rgba(255,255,255,0)}}
+  body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--fg);display:flex;flex-direction:column;height:100vh}
+  #bar{padding:8px 16px;font-size:13px;color:var(--muted);display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--bar-border);flex:0 0 auto;gap:8px;position:relative}
+  #bar>span:first-child{flex:0 0 auto}
+  .tabnav{background:transparent;border:1px solid transparent;color:var(--nav);width:24px;height:24px;border-radius:6px;cursor:pointer;display:none;align-items:center;justify-content:center;font-size:14px;padding:0;flex:0 0 auto;line-height:1}
+  .tabnav.show{display:inline-flex}
+  .tabnav:hover{color:var(--nav-hover);background:var(--nav-hover-bg)}
+  #tabs-wrap{position:relative;flex:1 1 auto;min-width:0;display:flex;align-items:center;margin:0 4px}
+  #tabs{display:flex;gap:2px;flex:1 1 auto;min-width:0;overflow-x:auto;overflow-y:hidden;align-items:center;scrollbar-width:none;-ms-overflow-style:none;scroll-behavior:smooth}
+  #tabs::-webkit-scrollbar{display:none}
+  #tabs-wrap .fade-l,#tabs-wrap .fade-r{position:absolute;top:0;bottom:0;width:24px;pointer-events:none;opacity:0;transition:opacity .15s}
+  #tabs-wrap .fade-l{left:0;background:linear-gradient(to right,var(--bg),var(--fade))}
+  #tabs-wrap .fade-r{right:0;background:linear-gradient(to left,var(--bg),var(--fade))}
+  #tabs-wrap .fade-l.show,#tabs-wrap .fade-r.show{opacity:1}
+  .tab{display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 12px;background:var(--tab-bg);border:1px solid var(--tab-border);border-radius:6px;font-size:12px;color:var(--tab-fg);cursor:pointer;max-width:180px;flex:0 0 auto;user-select:none}
+  .tab.active{background:var(--tab-active-bg);border-color:var(--tab-active-border);color:var(--tab-active-fg)}
+  .tab .tt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px;outline:none;cursor:text;border-radius:3px;padding:0 2px}
+  .tab .tt:focus{background:var(--tab-focus-bg);box-shadow:0 0 0 1px var(--tab-focus-ring)}
+  .tab .x{color:var(--tab-x);font-size:14px;line-height:1;padding:0 2px;border-radius:3px}
+  .tab .x:hover{color:var(--icon-hover);background:var(--tab-x-hover-bg)}
+  .tab .sh{color:var(--tab-x);font-size:12px;line-height:1;padding:0 2px;border-radius:3px}
+  .tab .sh:hover{color:var(--icon-hover);background:var(--tab-x-hover-bg)}
+  .collaborator-actions select{background:var(--tab-bg);color:var(--fg);border:1px solid var(--tab-border);border-radius:4px;padding:3px 6px;margin-right:6px;cursor:pointer}
+  .collaborator-actions select option{background:var(--bg);color:var(--fg)}
+  .tab.add{background:transparent;border-style:dashed;color:var(--tab-add)}
+  .tab.add:hover{color:var(--tab-add-hover);border-color:var(--icon-hover)}
+  #t{width:100%;flex:1 1 auto;box-sizing:border-box;outline:0;cursor:text;background:var(--bg);color:var(--fg);font:15px/1.7 ui-monospace,monospace;padding:20px 24px;overflow-y:auto;margin:0}
+  #t:empty::before{content:attr(data-ph);color:var(--ph)}
+  #t img{max-width:100%;height:auto;border-radius:6px;margin:8px 0;display:block}
+  #t img:active,#t img:focus{outline:2px solid var(--tab-focus-ring)}
+  #themeBtn,#featureBtn{background:transparent;border:1px solid transparent;color:var(--icon);width:28px;height:28px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:14px;padding:0;flex:0 0 auto}
+  #themeBtn:hover,#featureBtn:hover{color:var(--icon-hover);background:var(--icon-bg-hover)}
+  #langSel{background:transparent;color:var(--icon);border:1px solid var(--tab-border);border-radius:6px;font:inherit;font-size:12px;padding:3px 6px;cursor:pointer;height:28px;flex:0 0 auto}
+  #langSel:hover{color:var(--icon-hover);background:var(--icon-bg-hover)}
+  #langSel option{background:var(--bg);color:var(--fg)}
+  #userInfo{color:var(--fg);font-size:12px;padding:4px 10px;background:var(--tab-bg);border-radius:6px}
+  #logoutBtn{background:transparent;border:1px solid transparent;color:var(--icon);width:28px;height:28px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:14px;padding:0;flex:0 0 auto}
+  #logoutBtn:hover{color:var(--icon-hover);background:var(--icon-bg-hover)}
+  
+  /* Collaboration modal */
+  .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center}
+  .modal.show{display:flex}
+  .modal-content{background:var(--bg);padding:30px;border-radius:12px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto}
+  .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+  .modal-title{font-size:20px;font-weight:600;color:var(--fg)}
+  .close-btn{background:none;border:none;color:var(--fg);font-size:24px;cursor:pointer}
+  .share-section{margin-top:20px}
+  .collaborator-list{list-style:none;padding:0;margin:15px 0}
+  .collaborator-item{display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--tab-bg);border-radius:6px;margin-bottom:8px}
+  .collaborator-actions button{background:var(--tab-active-bg);color:var(--fg);border:none;padding:4px 10px;border-radius:4px;cursor:pointer}
+  .share-link-input{width:100%;padding:10px;margin:10px 0;background:var(--tab-bg);border:1px solid var(--tab-border);color:var(--fg);border-radius:6px;box-sizing:border-box}
+  .info-button{color:var(--nav);font-size:18px}
+  
+  @media (prefers-color-scheme:light){:root:not([data-theme]){--nav:#999;--nav-hover:#1a1a1a;--nav-hover-bg:#e0e0e0}}
+</style>
+<div id="bar">
+  <span>HazeNotes <span id="userInfo" style="display:USER_INFO_STYLE_PLACEHOLDER_">{CURRENT_USER_DISPLAY}</span></span>
+  <div id="tabs-wrap">
+    <button id="tabPrev" class="tabnav" type="button" title="Scroll left">‹</button>
+    <div id="tabs"></div>
+    <button id="tabNext" class="tabnav" type="button" title="Scroll right">›</button>
+    <div class="fade-l"></div>
+    <div class="fade-r"></div>
+  </div>
+  <span id="st"></span>
+  <select id="langSel" title="Language">
+    <option value="en">EN</option>
+    <option value="id">ID</option>
+  </select>
+  <button id="featureBtn" type="button" title="Features">&nbsp;✦&nbsp;</button>
+  <button id="themeBtn" type="button" title="Toggle dark/light"></button>
+  [LOGOUT_BUTTON_PLACEHOLDER]
+</div>
+<div id="t" data-ph="Type here... paste images with Ctrl+V" contenteditable="true"></div>
+
+<!-- Collaboration Modal -->
+<div id="shareModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 class="modal-title">Share Note</h2>
+      <button class="close-btn" onclick="closeShareModal()">×</button>
+    </div>
+    <div class="share-section">
+      <p style="color:var(--muted);font-size:13px;">Add collaborators to share this note:</p>
+      <input type="text" id="collaboratorInput" class="share-link-input" placeholder="Enter username to share with">
+      <select id="collaboratorRole" class="share-link-input" style="cursor:pointer;">
+        <option value="edit">Can edit</option>
+        <option value="read">Read only</option>
+      </select>
+      <button onclick="addCollaborator()" style="width:100%;padding:10px;background:var(--tab-active-bg);color:var(--fg);border:none;border-radius:6px;cursor:pointer;">Add Collaborator</button>
+      
+      <ul id="collaboratorList" class="collaborator-list"></ul>
+      
+      <hr style="border:1px solid var(--bar-border);margin:20px 0;">
+      
+      <p style="color:var(--muted);font-size:13px;">Your note link:</p>
+      <input type="text" id="shareLink" class="share-link-input" readonly>
+      <button onclick="copyLink()" style="width:100%;padding:10px;background:var(--tab-active-bg);color:var(--fg);border:none;border-radius:6px;cursor:pointer;">Copy Link</button>
+    </div>
+  </div>
+</div>
+
+<!-- Features Info Modal -->
+<div id="featuresModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 class="modal-title">✨ Features</h2>
+      <button class="close-btn" onclick="closeFeaturesModal()">×</button>
+    </div>
+    <div style="line-height:1.8;">
+      <h3 style="margin-top:20px;">🔐 Authentication</h3>
+      <p>If authentication is enabled, you need to login to access your personal notes.</p>
+      
+      <h3 style="margin-top:20px;">📝 User-Specific Notes</h3>
+      <p>Each user has their own separate notes. Your notes are private by default.</p>
+      
+      <h3 style="margin-top:20px;">🤝 Collaboration</h3>
+      <p>Share your notes with other users. They can view and edit the same note in real-time!</p>
+      
+      <h3 style="margin-top:20px;">⚡ High Performance Real-Time Sync</h3>
+      <p>Instant synchronization via persistent WebSockets & SQLite WAL mode for fast concurrency.</p>
+      
+      <h3 style="margin-top:20px;">🖼️ Image Support</h3>
+      <p>Paste or drag & drop images directly into your notes.</p>
+      
+      <h3 style="margin-top:20px;">🌗 Dark/Light Mode</h3>
+      <p>Switch between dark and light themes based on your preference.</p>
+      
+      <h3 style="margin-top:20px;">📱 Multi-Language</h3>
+      <p>Support for English and Indonesian languages.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const t=document.getElementById('t'),tabsEl=document.getElementById('tabs'),st=document.getElementById('st');
+const I18N={
+  en:{
+    untitled:'Untitled',newTab:'New tab',renameHint:'Click to edit',
+    addTab:'New note',defaultTitle:'New Note',firstNote:'New Note',
+    deleteConfirm:'Delete this note?',leaveConfirm:'Leave this shared note?',
+    titlePrompt:'Note title:',
+    saved:'Saved',saving:'Saving…',saveFail:'Save failed',
+    placeholder:'Type here... paste images with Ctrl+V',
+    themeDark:'Switch to dark',themeLight:'Switch to light',
+    imageAlt:'image',noTitle:'Untitled',
+    shareTitle:'Share Note',addCollaborator:'Add Collaborator',
+    copyLink:'Copy Link',linkCopied:'Link copied!',remove:'Remove',
+    roleEdit:'Can edit',readOnly:'Read only',
+    enterUsername:'Enter username',yourLink:'Your note link',
+    collabNote:'Shared note',ownedBy:'Owned by',
+  },
+  id:{
+    untitled:'Tanpa judul',newTab:'Tab baru',renameHint:'Klik untuk edit',
+    addTab:'Tambah note baru',defaultTitle:'New Note',firstNote:'New Note',
+    deleteConfirm:'Hapus note ini?',leaveConfirm:'Keluar dari note bersama ini?',
+    titlePrompt:'Judul note:',
+    saved:'Tersimpan',saving:'Menyimpan…',saveFail:'Gagal simpan',
+    placeholder:'Tulis di sini... tempel gambar dengan Ctrl+V',
+    themeDark:'Ganti ke gelap',themeLight:'Ganti ke terang',
+    imageAlt:'gambar',noTitle:'Tanpa judul',
+    shareTitle:'Bagikan Note',addCollaborator:'Tambah Kolaborator',
+    copyLink:'Salin Link',linkCopied:'Link disalin!',remove:'Hapus',
+    roleEdit:'Bisa edit',readOnly:'Baca saja',
+    enterUsername:'Masukkan nama pengguna',yourLink:'Link note Anda',
+    collabNote:'Note bersama',ownedBy:'Milik',
+  },
+};
+const LANG_KEY='webnotepad.lang';
+let lang=localStorage.getItem(LANG_KEY);
+if(lang!=='en'&&lang!=='id') lang='en';
+const t9n=(k)=>(I18N[lang]&&I18N[lang][k])||I18N.en[k]||k;
+
+let timer,lastSent=null,currentId=null,notes=[],dirty=false,saving=false,currentUser=CURRENT_USER_PLACEHOLDER_;
+let noteRoles={},canEditCurrent=true;
+const featuresEnabled=true;
+
+// ==================== REAL-TIME WEBSOCKET CLIENT ====================
+let ws = null;
+let wsReconnectTimer = null;
+
+function connectWS(noteId){
+  if(ws){
+    try { ws.close(); } catch(e){}
+    ws = null;
+  }
+  if(!noteId) return;
+  clearTimeout(wsReconnectTimer);
+  
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}/ws/notes/${noteId}`;
+  
+  try {
+    ws = new WebSocket(wsUrl);
+    ws.onmessage = (event) => {
+      if(saving || dirty) return; // Do not overwrite uncommitted local edits
+      try {
+        const msg = JSON.parse(event.data);
+        if(msg.type === 'note_update' && msg.note_id === currentId){
+          const remote = msg.note != null ? msg.note : '';
+          if(remote !== lastSent){
+            lastSent = remote;
+            const cur = looksHTML(remote) ? t.innerHTML : t.textContent;
+            if(cur !== remote){
+              const off = document.activeElement === t ? caretOffset() : null;
+              if(looksHTML(remote)) renderSafe(remote); else t.textContent = remote;
+              if(off != null) setCaret(off); else caretEnd();
+              st.textContent = t9n('saved');
+            }
+          }
+          if(msg.title){
+            const n = notes.find(x => x.id === currentId);
+            if(n && n.title !== msg.title){
+              n.title = msg.title;
+              renderTabs();
+            }
+          }
+        } else if(msg.type === 'note_deleted' && msg.note_id === currentId){
+          loadNotes();
+        }
+      } catch(e){}
+    };
+    
+    ws.onclose = () => {
+      // Reconnect automatically if still on the same note
+      if(currentId === noteId){
+        wsReconnectTimer = setTimeout(() => {
+          if(currentId === noteId) connectWS(noteId);
+        }, 2000);
+      }
+    };
+  } catch(e){}
+}
+
+const looksHTML=s=>/<(img|div|p|br|h[1-6]|ul|ol|li|table|pre|blockquote|hr)\b/i.test(s||'');
+
+function renderSafe(html){
+  const dp=new DOMParser().parseFromString('<div>'+html+'</div>','text/html');
+  const root=dp.body.firstChild;
+  const bad=root.querySelectorAll('script,iframe,object,embed,style,link,meta');
+  bad.forEach(n=>n.remove());
+  const walker=dp.createTreeWalker(root,NodeFilter.SHOW_ELEMENT);
+  let el=walker.nextNode();
+  while(el){
+    for(const a of [...el.attributes]){
+      if(/^on/i.test(a.name)||/^javascript:/i.test(a.value)) el.removeAttribute(a.name);
+    }
+    if(el.tagName==='A'&&el.href&&!/^https?:\/\//i.test(el.href)&&!/^mailto:/i.test(el.href)) el.removeAttribute('href');
+    el=walker.nextNode();
+  }
+  root.querySelectorAll('img[src]').forEach(img=>{
+    if(!/^\/images\//.test(img.getAttribute('src'))) img.removeAttribute('src');
+  });
+  const frag=document.createDocumentFragment();
+  while(root.firstChild) frag.appendChild(root.firstChild);
+  t.replaceChildren(frag);
+}
+
+function updateNav(){
+  const canLeft=tabsEl.scrollLeft>1;
+  const canRight=tabsEl.scrollLeft<tabsEl.scrollWidth-tabsEl.clientWidth-1;
+  document.getElementById('tabPrev').classList.toggle('show',canLeft);
+  document.getElementById('tabNext').classList.toggle('show',canRight);
+  document.querySelector('.fade-l').classList.toggle('show',canLeft);
+  document.querySelector('.fade-r').classList.toggle('show',canRight);
+}
+document.getElementById('tabPrev').onclick=()=>tabsEl.scrollBy({left:-150,behavior:'smooth'});
+document.getElementById('tabNext').onclick=()=>tabsEl.scrollBy({left:150,behavior:'smooth'});
+tabsEl.addEventListener('scroll',updateNav,{passive:true});
+
+function renderTabs(){
+  tabsEl.innerHTML='';
+  for(const n of notes){
+    const tab=document.createElement('div');
+    tab.className='tab'+(n.id===currentId?' active':'');
+    tab.dataset.id=n.id;
+    
+    // Collab indicator icon
+    const isOwner=n.is_owner!==false;
+    const isCollab=n.is_collab===true;
+    if(isCollab){
+      const ci=document.createElement('span');
+      ci.className='sh';
+      ci.textContent='👥';
+      ci.title=isOwner?t9n('collabNote'):(t9n('ownedBy')+' '+n.owner);
+      ci.style.cursor='default';
+      tab.appendChild(ci);
+    }
+    
+    const tt=document.createElement('span');
+    tt.className='tt';
+    tt.textContent=n.title||t9n('untitled');
+    tt.title=t9n('renameHint');
+    tab.appendChild(tt);
+    
+    // Share button (only for owner)
+    if(isOwner){
+      const sh=document.createElement('span');
+      sh.className='sh';
+      sh.innerHTML='🔗';
+      sh.title=t9n('shareTitle');
+      sh.onclick=(e)=>{e.stopPropagation();openShareModal(n.id);};
+      tab.appendChild(sh);
+    }
+    
+    if(notes.length>1){
+      const x=document.createElement('span');
+      x.className='x';
+      x.textContent='×';
+      x.title=isOwner?t9n('deleteConfirm'):t9n('leaveConfirm');
+      x.onclick=(e)=>{e.stopPropagation();deleteNote(n.id);};
+      tab.appendChild(x);
+    }
+    tab.onclick=()=>{if(n.id!==currentId) switchNote(n.id);};
+    tabsEl.appendChild(tab);
+  }
+  const add=document.createElement('div');
+  add.className='tab add';
+  add.textContent='+';
+  add.title=t9n('addTab');
+  add.onclick=createNote;
+  tabsEl.appendChild(add);
+  enableRename();
+  updateNav();
+}
+
+async function loadNotes(){
+  const d=await (await fetch('/api/notes')).json();
+  notes=(d.notes||[]).map(n=>({
+    id:n.id, title:n.title, owner:n.owner,
+    is_owner:n.is_owner, is_collab:n.is_collab,
+    collab_count:n.collab_count, user_role:n.user_role
+  }));
+  if(!notes.length){
+    const r=await (await fetch('/api/notes',{method:'POST',body:JSON.stringify({title:t9n('firstNote')}),headers:{'Content-Type':'application/json'}})).json();
+    notes=[{id:r.id,title:r.title,is_owner:true,is_collab:false,owner:currentUser}];
+  }
+  await switchNote(notes[0].id, false);
+  renderTabs();
+}
+
+async function switchNote(id, refreshTabs=true){
+  if(currentId && currentId!==id && t.innerHTML!==''){
+    clearTimeout(timer); dirty=false;
+    const prev=notes.find(x=>x.id===currentId)||{};
+    fetch('/api/notes/'+currentId,{method:'POST',
+      body:JSON.stringify({title:prev.title||'',note:t.innerHTML}),
+      headers:{'Content-Type':'application/json'}}).catch(()=>{});
+  }
+  currentId=id;
+  const d=await (await fetch('/api/notes/'+id)).json();
+  noteRoles[id]={owner:d.created_by,roles:d.collaborators||{}};
+  canEditCurrent=d.created_by===currentUser||(d.collaborators||{})[currentUser]==='edit';
+  t.contentEditable=canEditCurrent?'true':'false';
+  lastSent=d.note||'';
+  if(looksHTML(lastSent)) renderSafe(lastSent); else t.textContent=lastSent;
+  st.textContent=canEditCurrent?t9n('saved'):t9n('readOnly');
+  
+  // Connect real-time WebSocket for the active note
+  connectWS(id);
+  
+  if(refreshTabs) renderTabs();
+}
+
+async function createNote(){
+  const r=await (await fetch('/api/notes',{method:'POST',body:JSON.stringify({title:t9n('defaultTitle')}),headers:{'Content-Type':'application/json'}})).json();
+  notes.push({id:r.id,title:r.title});
+  await switchNote(r.id);
+  renderTabs();
+}
+
+async function deleteNote(id){
+  const n=notes.find(x=>x.id===id);
+  const isOwner=!n||n.is_owner!==false;
+  const msg=isOwner?t9n('deleteConfirm'):t9n('leaveConfirm');
+  if(!confirm(msg)) return;
+  const res=await fetch('/api/notes/'+id,{method:'DELETE'});
+  if(!res.ok){
+    const err=await res.json().catch(()=>({}));
+    alert(err.error||'Failed'); return;
+  }
+  notes=notes.filter(x=>x.id!==id);
+  delete noteRoles[id];
+  if(currentId===id){
+    if(!notes.length){await createNote();return;}
+    await switchNote(notes[0].id);
+  }else{
+    renderTabs();
+  }
+}
+
+async function renameTab(id){
+  const n=notes.find(x=>x.id===id);if(!n) return;
+  const meta=noteRoles[id];
+  if(meta && meta.owner!==currentUser && meta.roles[currentUser]!=='edit') return;
+  if(currentId!==id) await switchNote(id);
+  const tt=tabsEl.querySelector(`.tab[data-id="${id}"] .tt`);if(!tt) return;
+  const finish=(commit)=>{
+    tt.contentEditable='false';
+    const val=tt.textContent.trim()||t9n('untitled');
+    tt.textContent=val;
+    if(commit&&val!==n.title){
+      n.title=val;
+      fetch('/api/notes/'+id,{method:'POST',body:JSON.stringify({title:val,note:t.innerHTML}),headers:{'Content-Type':'application/json'}});
+    }
+  };
+  tt.contentEditable='true';
+  tt.focus();
+  const r=document.createRange(); r.selectNodeContents(tt);
+  const s=window.getSelection(); s.removeAllRanges(); s.addRange(r);
+  tt.onkeydown=(e)=>{
+    if(e.key==='Enter'){e.preventDefault();finish(true);}
+    else if(e.key==='Escape'){e.preventDefault();finish(false);}
+  };
+  tt.onblur=()=>finish(true);
+}
+
+function enableRename(){
+  tabsEl.querySelectorAll('.tab').forEach(tab=>{
+    const id=tab.dataset.id;
+    if(!id) return;
+    const tt=tab.querySelector('.tt');
+    if(!tt) return;
+    tt.onclick=(e)=>{e.stopPropagation();renameTab(id);};
+  });
+}
+
+function save(){
+  st.textContent=t9n('saving');
+  if(!currentId) return;
+  if(!canEditCurrent) return;
+  saving=true;
+  const id=currentId;
+  const title=(notes.find(n=>n.id===id)||{}).title||'';
+  const body=t.innerHTML;
+  fetch('/api/notes/'+id,{method:'POST',body:JSON.stringify({title,note:body}),headers:{'Content-Type':'application/json'}})
+    .then(()=>{lastSent=body; saving=false; if(!dirty) st.textContent=t9n('saved');})
+    .catch(()=>{saving=false; st.textContent=t9n('saveFail');});
+}
+t.addEventListener('input',()=>{st.textContent=t9n('saving');dirty=true;clearTimeout(timer);timer=setTimeout(()=>{dirty=false;save();},500)});
+
+function uploadImages(files){
+  let done=0;
+  files.forEach(f=>{
+    fetch('/api/upload',{method:'POST',body:f}).then(r=>r.json()).then(d=>{
+      if(d.url) document.execCommand('insertHTML',false,'<img src="'+d.url+'" alt="gambar">');
+    }).finally(()=>{if(++done===files.length) save()});
+  });
+}
+t.addEventListener('paste',e=>{
+  const files=[...(e.clipboardData?.files||[])].filter(f=>f.type.startsWith('image/'));
+  if(!files.length) return;
+  e.preventDefault();
+  uploadImages(files);
+});
+t.addEventListener('dragover',e=>e.preventDefault());
+t.addEventListener('drop',e=>{
+  e.preventDefault();
+  const files=[...(e.dataTransfer.files||[])].filter(f=>f.type.startsWith('image/'));
+  if(files.length) uploadImages(files);
+});
+
+function caretOffset(){
+  const sel=window.getSelection();
+  if(!sel.rangeCount) return null;
+  const range=sel.getRangeAt(0);
+  const pre=range.cloneRange();
+  pre.selectNodeContents(t);
+  pre.setEnd(range.startContainer,range.startOffset);
+  return pre.toString().length;
+}
+function setCaret(off){
+  if(off==null) return;
+  const w=document.createTreeWalker(t,NodeFilter.SHOW_TEXT);
+  let node,acc=0;
+  while((node=w.nextNode())){
+    const l=node.data.length;
+    if(acc+l>=off){
+      const r=document.createRange();
+      r.setStart(node,Math.min(off-acc,l)); r.collapse(true);
+      const s=window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      return;
+    }
+    acc+=l;
+  }
+}
+function caretEnd(){
+  const r=document.createRange(); r.selectNodeContents(t); r.collapse(false);
+  const s=window.getSelection(); s.removeAllRanges(); s.addRange(r);
+}
+
+function applyLang(){
+  t.setAttribute('data-ph', t9n('placeholder'));
+  st.textContent=(saving||dirty) ? t9n('saving') : (!canEditCurrent ? t9n('readOnly') : t9n('saved'));
+  renderTabs();
+}
+document.getElementById('langSel').value=lang;
+document.getElementById('langSel').onchange=(e)=>{
+  lang=e.target.value;
+  localStorage.setItem(LANG_KEY,lang);
+  applyLang();
+};
+
+const THEME_KEY='webnotepad.theme';
+function getTheme(){return localStorage.getItem(THEME_KEY)||'auto'}
+function applyTheme(theme){
+  if(theme==='auto') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme',theme);
+  const isDark=theme==='dark'||(theme==='auto'&&window.matchMedia('(prefers-color-scheme:dark)').matches);
+  document.getElementById('themeBtn').textContent=isDark?'☀':'🌙';
+  document.getElementById('themeBtn').title=isDark?t9n('themeLight'):t9n('themeDark');
+}
+document.getElementById('themeBtn').onclick=()=>{
+  const cur=getTheme();
+  let next='auto';
+  if(cur==='auto') next=window.matchMedia('(prefers-color-scheme:dark)').matches?'light':'dark';
+  else if(cur==='dark') next='light';
+  else next='dark';
+  localStorage.setItem(THEME_KEY,next);
+  applyTheme(next);
+};
+window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{
+  if(getTheme()==='auto') applyTheme('auto');
+});
+
+// Features modal
+document.getElementById('featureBtn').onclick=()=>document.getElementById('featuresModal').classList.add('show');
+function closeFeaturesModal(){document.getElementById('featuresModal').classList.remove('show');}
+
+// Share modal
+async function openShareModal(noteId){
+  const modal=document.getElementById('shareModal');
+  modal.classList.add('show');
+  modal.dataset.noteId=noteId;
+  document.getElementById('shareLink').value=window.location.origin+'?note='+noteId;
+  await loadCollaborators(noteId);
+}
+function closeShareModal(){document.getElementById('shareModal').classList.remove('show');}
+
+async function loadCollaborators(noteId){
+  const d=await (await fetch('/api/notes/'+noteId)).json();
+  const list=document.getElementById('collaboratorList');
+  list.innerHTML='';
+  const collabs=d.collaborators||{};
+  for(const [username,role] of Object.entries(collabs)){
+    const li=document.createElement('li');
+    li.className='collaborator-item';
+    li.innerHTML=`<span>${username}</span><div class="collaborator-actions"><select onchange="updateRole('${noteId}','${username}',this.value)"><option value="edit" ${role==='edit'?'selected':''}>${t9n('roleEdit')}</option><option value="read" ${role==='read'?'selected':''}>${t9n('readOnly')}</option></select><button onclick="removeCollaborator('${noteId}','${username}')">${t9n('remove')}</button></div>`;
+    list.appendChild(li);
+  }
+}
+
+async function addCollaborator(){
+  const noteId=document.getElementById('shareModal').dataset.noteId;
+  const username=document.getElementById('collaboratorInput').value.trim();
+  const role=document.getElementById('collaboratorRole').value;
+  if(!username) return;
+  const res=await fetch(`/api/notes/${noteId}/share`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({username,role})
+  });
+  if(res.ok){
+    document.getElementById('collaboratorInput').value='';
+    await loadCollaborators(noteId);
+  }else{
+    const d=await res.json();
+    alert(d.error||'Failed to add collaborator');
+  }
+}
+
+async function removeCollaborator(noteId,username){
+  await fetch(`/api/notes/${noteId}/share`,{
+    method:'DELETE',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({username})
+  });
+  await loadCollaborators(noteId);
+}
+
+async function updateRole(noteId,username,role){
+  await fetch(`/api/notes/${noteId}/share`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({username,role})
+  });
+}
+
+function copyLink(){
+  const input=document.getElementById('shareLink');
+  input.select();
+  navigator.clipboard.writeText(input.value);
+  alert(t9n('linkCopied'));
+}
+
+window.onclick=(e)=>{
+  if(e.target.classList.contains('modal')) e.target.classList.remove('show');
+};
+
+LOGOUT_SCRIPT_PLACEHOLDER
+
+applyTheme(getTheme());
+applyLang();
+loadNotes();
+</script>
+</html>

@@ -180,8 +180,5 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
-# App data
-images/*
-!images/.gitkeep
-notes/*
-!notes/.gitkeep
+# App data (SQLite DB + uploaded images)
+storage/
