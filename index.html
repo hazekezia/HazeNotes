@@ -11,9 +11,6 @@
   body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--fg);display:flex;flex-direction:column;height:100vh}
   #bar{padding:8px 16px;font-size:13px;color:var(--muted);display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--bar-border);flex:0 0 auto;gap:8px;position:relative}
   #bar>span:first-child{flex:0 0 auto}
-  .brand{display:inline-flex;align-items:center;gap:6px}
-  .brand img{width:20px;height:20px;border-radius:3px;display:block}
-  #credit{position:fixed;bottom:6px;right:10px;font-size:11px;color:var(--muted);user-select:none;pointer-events:none}
   .tabnav{background:transparent;border:1px solid transparent;color:var(--nav);width:24px;height:24px;border-radius:6px;cursor:pointer;display:none;align-items:center;justify-content:center;font-size:14px;padding:0;flex:0 0 auto;line-height:1}
   .tabnav.show{display:inline-flex}
   .tabnav:hover{color:var(--nav-hover);background:var(--nav-hover-bg)}
@@ -44,7 +41,7 @@
   #langSel option{background:var(--bg);color:var(--fg)}
 </style>
 <div id="bar">
-  <span class="brand"><img src="/favicon.png" alt="">Notepad Web</span>
+  <span>Notepad Web</span>
   <div id="tabs-wrap">
     <button id="tabPrev" class="tabnav" type="button" title="Scroll left">‹</button>
     <div id="tabs"></div>
@@ -59,8 +56,7 @@
   </select>
   <button id="themeBtn" type="button" title="Toggle dark/light"></button>
 </div>
-<div id="t" data-ph="Type here..." contenteditable="true"></div>
-<footer id="credit">credits by hzK · v1.0</footer>
+<div id="t" data-ph="Type here... paste images with Ctrl+V" contenteditable="true"></div>
 <script>
 const t=document.getElementById('t'),tabsEl=document.getElementById('tabs'),st=document.getElementById('st');
 const I18N={
@@ -69,7 +65,7 @@ const I18N={
     addTab:'New note',defaultTitle:'New Note',firstNote:'New Note',
     deleteConfirm:'Delete this note?',titlePrompt:'Note title:',
     saved:'Saved',saving:'Saving…',saveFail:'Save failed',
-    placeholder:'Type here...',
+    placeholder:'Type here... paste images with Ctrl+V',
     themeDark:'Switch to dark',themeLight:'Switch to light',
     imageAlt:'image',noTitle:'Untitled',
   },
@@ -78,7 +74,7 @@ const I18N={
     addTab:'Tambah note baru',defaultTitle:'New Note',firstNote:'New Note',
     deleteConfirm:'Hapus note ini?',titlePrompt:'Judul note:',
     saved:'Tersimpan',saving:'Menyimpan…',saveFail:'Gagal simpan',
-    placeholder:'Tulis di sini...',
+    placeholder:'Tulis di sini... tempel gambar dengan Ctrl+V',
     themeDark:'Ganti ke gelap',themeLight:'Ganti ke terang',
     imageAlt:'gambar',noTitle:'Tanpa judul',
   },
@@ -198,6 +194,7 @@ async function switchNote(id, refreshTabs=true){
   lastSent=d.note||'';
   if(looksHTML(lastSent)) renderSafe(lastSent); else t.textContent=lastSent;
   st.textContent=t9n('saved');
+  connectWS(id);
   if(refreshTabs) renderTabs();
 }
 
@@ -333,25 +330,61 @@ function caretEnd(){
   const r=document.createRange(); r.selectNodeContents(t); r.collapse(false);
   const s=window.getSelection(); s.removeAllRanges(); s.addRange(r);
 }
-setInterval(async()=>{
-  if(!currentId) return;
-  if(saving) return; // skip if a save() is in-flight (avoid race)
-  if(dirty) return;  // skip if local edits pending save
-  try{
-    const d=await (await fetch('/api/notes/'+currentId)).json();
-    const remote=d.note||'';
-    if(remote!==lastSent){
-      lastSent=remote;
-      const cur=looksHTML(remote)?t.innerHTML:t.textContent;
-      if(cur!==remote){
-        const off=document.activeElement===t?caretOffset():null;
-        if(looksHTML(remote)) renderSafe(remote); else t.textContent=remote;
-        if(off!=null) setCaret(off); else caretEnd();
-        st.textContent=t9n('saved');
+// Real-time WebSocket Client
+let ws = null;
+let wsReconnectTimer = null;
+
+function connectWS(noteId){
+  if(ws){
+    try { ws.close(); } catch(e){}
+    ws = null;
+  }
+  if(!noteId) return;
+  clearTimeout(wsReconnectTimer);
+  
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}/ws/notes/${noteId}`;
+  
+  try {
+    ws = new WebSocket(wsUrl);
+    ws.onmessage = (event) => {
+      if(saving || dirty) return; // Do not overwrite uncommitted local edits
+      try {
+        const msg = JSON.parse(event.data);
+        if(msg.type === 'note_update' && msg.note_id === currentId){
+          const remote = msg.note != null ? msg.note : '';
+          if(remote !== lastSent){
+            lastSent = remote;
+            const cur = looksHTML(remote) ? t.innerHTML : t.textContent;
+            if(cur !== remote){
+              const off = document.activeElement === t ? caretOffset() : null;
+              if(looksHTML(remote)) renderSafe(remote); else t.textContent = remote;
+              if(off != null) setCaret(off); else caretEnd();
+              st.textContent = t9n('saved');
+            }
+          }
+          if(msg.title){
+            const n = notes.find(x => x.id === currentId);
+            if(n && n.title !== msg.title){
+              n.title = msg.title;
+              renderTabs();
+            }
+          }
+        } else if(msg.type === 'note_deleted' && msg.note_id === currentId){
+          loadNotes();
+        }
+      } catch(e){}
+    };
+    
+    ws.onclose = () => {
+      if(currentId === noteId){
+        wsReconnectTimer = setTimeout(() => {
+          if(currentId === noteId) connectWS(noteId);
+        }, 2000);
       }
-    }
-  }catch(e){}
-},1000);
+    };
+  } catch(e){}
+}
 
 // ---- i18n: language selector, persist in localStorage ----
 function applyLang(){

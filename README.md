@@ -1,6 +1,6 @@
 # Notepad Web
 
-A lightweight, tabbed note-taking web app with a zero-dependency Python backend. Write notes in your browser, organize them in tabs, and keep everything synced across open clients — no database, no frameworks, just Python's standard library.
+A lightweight, tabbed note-taking web app with a zero-dependency Python backend. Write notes in your browser, organize them in tabs, and keep everything synced across open clients — no database, no frameworks, just Python's standard library. test
 
 ## Features
 
