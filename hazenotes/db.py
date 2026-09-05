@@ -11,20 +11,18 @@ import os
 import json
 import sqlite3
 import shutil
-import hashlib
-import uuid
+import secrets
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 
-DATA_DIR = os.getenv('NOTEPAD_DATA_DIR', './storage/data')
-DB_PATH = os.path.join(DATA_DIR, 'notepad.db')
+from . import config
+from .security import unusable_password
+
+DATA_DIR = config.DATA_DIR
+DB_PATH = config.DB_PATH
 
 _local = threading.local()
-
-def hash_password(password: str) -> str:
-    """Hash password using SHA-256"""
-    return hashlib.sha256(password.encode()).hexdigest()
 
 def get_db_connection() -> sqlite3.Connection:
     """
@@ -94,8 +92,13 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_collab_note ON collaborators(note_id);
         CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(username);
     """)
+    # Owner of notes created while auth is disabled.
+    cursor.execute(
+        "INSERT OR IGNORE INTO users (username, password_hash, created_at) VALUES (?, ?, ?)",
+        ('anonymous', unusable_password(), datetime.now().isoformat())
+    )
     conn.commit()
-    
+
     # Auto-migrate legacy JSON data if table is currently empty
     migrate_legacy_data(conn)
 
@@ -136,9 +139,11 @@ def migrate_legacy_data(conn: sqlite3.Connection):
             
             for note_id, n in notes_data.items():
                 owner = n.get('owner', 'anonymous')
+                # ponytail: migrated owners get an unusable random password (they can
+                # use /api/auth/register); the old code silently set 'admin123'.
                 cursor.execute(
                     "INSERT OR IGNORE INTO users (username, password_hash, created_at) VALUES (?, ?, ?)",
-                    (owner, hash_password("admin123"), datetime.now().isoformat())
+                    (owner, unusable_password(), datetime.now().isoformat())
                 )
                 
                 title = n.get('title', 'Untitled')
@@ -158,7 +163,7 @@ def migrate_legacy_data(conn: sqlite3.Connection):
                     for u, role in collabs.items():
                         cursor.execute(
                             "INSERT OR IGNORE INTO users (username, password_hash, created_at) VALUES (?, ?, ?)",
-                            (u, hash_password("admin123"), datetime.now().isoformat())
+                            (u, unusable_password(), datetime.now().isoformat())
                         )
                         cursor.execute(
                             "INSERT OR REPLACE INTO collaborators (note_id, username, role) VALUES (?, ?, ?)",
@@ -198,12 +203,13 @@ def create_user(username: str, password_hash: str) -> bool:
 # ==================== SESSION OPERATIONS ====================
 
 def create_session(username: str) -> str:
-    token = uuid.uuid4().hex
+    token = secrets.token_hex(32)
+    expires_at = (datetime.now() + timedelta(hours=config.SESSION_TTL_HOURS)).isoformat()
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO sessions (token, username, created_at) VALUES (?, ?, ?)",
-        (token, username, datetime.now().isoformat())
+        "INSERT INTO sessions (token, username, created_at, expires_at) VALUES (?, ?, ?, ?)",
+        (token, username, datetime.now().isoformat(), expires_at)
     )
     conn.commit()
     return token
@@ -213,9 +219,21 @@ def get_session_user(token: str) -> Optional[str]:
         return None
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT username FROM sessions WHERE token = ?", (token,))
+    cursor.execute("SELECT username, expires_at FROM sessions WHERE token = ?", (token,))
     row = cursor.fetchone()
-    return row['username'] if row else None
+    if not row:
+        return None
+    expires_at = row['expires_at']
+    # Legacy rows have expires_at NULL and stay valid; new rows expire after SESSION_TTL_HOURS.
+    if expires_at is not None:
+        try:
+            if datetime.fromisoformat(expires_at) < datetime.now():
+                cursor.execute("DELETE FROM sessions WHERE token = ?", (token,))
+                conn.commit()
+                return None
+        except ValueError:
+            return None
+    return row['username']
 
 def delete_session(token: str):
     if not token:
@@ -224,6 +242,25 @@ def delete_session(token: str):
     cursor = conn.cursor()
     cursor.execute("DELETE FROM sessions WHERE token = ?", (token,))
     conn.commit()
+
+def purge_expired_sessions() -> int:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "DELETE FROM sessions WHERE expires_at IS NOT NULL AND expires_at < ?",
+        (datetime.now().isoformat(),)
+    )
+    deleted = cursor.rowcount
+    conn.commit()
+    return deleted
+
+def update_user_password(username: str, password_hash: str) -> bool:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET password_hash = ? WHERE username = ?", (password_hash, username))
+    updated = cursor.rowcount > 0
+    conn.commit()
+    return updated
 
 # ==================== NOTE OPERATIONS ====================
 
@@ -288,12 +325,7 @@ def create_note(note_id: str, title: str, owner: str, content: str = '') -> Dict
     now = datetime.now().isoformat()
     conn = get_db_connection()
     cursor = conn.cursor()
-    
-    cursor.execute(
-        "INSERT OR IGNORE INTO users (username, password_hash, created_at) VALUES (?, ?, ?)",
-        (owner, hash_password("admin123"), now)
-    )
-    
+
     cursor.execute(
         "INSERT INTO notes (id, title, content, owner, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
         (note_id, title, content, owner, now, now)

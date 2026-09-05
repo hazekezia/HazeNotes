@@ -1,96 +1,103 @@
-# Notepad Web
+# HazeNotes
 
-A lightweight, tabbed note-taking web app with a zero-dependency Python backend. Write notes in your browser, organize them in tabs, and keep everything synced across open clients — no database, no frameworks, just Python's standard library. test
+A self-hosted, multi-user note-taking app with real-time collaboration, built with **FastAPI**, **SQLite (WAL)**, and **WebSockets**. Single process, single file of state, no external services.
+
+![Python](https://img.shields.io/badge/python-3.10+-blue) ![License](https://img.shields.io/badge/license-GPL%20v3-green)
 
 ## Features
 
-- 📝 **Tabbed notes** — create, rename, and delete notes from a browser-style tab bar
-- 💾 **Autosave** — notes are saved automatically ~500 ms after you stop typing
-- 🔄 **Live sync** — the server is polled every second, so multiple open tabs/clients stay in sync
-- 🖼️ **Image support** — paste (`Ctrl+V`) or drag-and-drop images straight into a note
-- 🌗 **Dark/light theme** — manual toggle, remembers your choice
-- 🌐 **Bilingual UI** — English and Indonesian, switchable from the toolbar
-- 🗑️ **Automatic cleanup** — images no longer referenced by any note are garbage-collected
-- 🔒 **Sensible safeguards** — image uploads are validated by magic bytes (SVG is rejected to block active scripts), note bodies are sanitized before rendering, and request sizes are capped
-
-## Requirements
-
-- Python 3 (any recent version)
-
-No `pip install` needed — the server uses only the standard library.
-
-## Getting Started
-
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/hazekezia/NotepadWeb.git
-   cd NotepadWeb
-   ```
-
-2. Start the server:
-
-   ```bash
-   python server.py
-   ```
-
-3. Open <http://localhost:8123> in your browser and start typing.
-
-The server listens on `0.0.0.0:8123`, so other devices on your network can reach it at `http://<your-ip>:8123` (firewall permitting).
-
-## Usage
-
-| Action | How |
-| --- | --- |
-| Create a note | Click the **+** tab at the end of the tab bar |
-| Switch notes | Click a tab |
-| Rename a note | Click the tab's title, type a new name, press `Enter` (or `Esc` to cancel) |
-| Delete a note | Click the **×** on the tab, then confirm |
-| Add an image | Paste it (`Ctrl+V`) or drag and drop it into the note |
-| Change theme | Click the 🌙 / ☀️ button in the top-right corner |
-| Change language | Use the `EN` / `ID` selector in the top-right corner |
-
-Notes autosave as you type — no save button needed.
-
-## How It Works
-
-### Storage
-
-- **Notes** are stored as JSON files in the [`notes/`](notes/) directory — one `.txt` file per note, containing a `title` and a `body` (HTML). Plain-text files from older versions are still read, using the first non-empty line as the title.
-- **Images** are stored in an `images/` directory (created automatically) with random filenames. Uploaded images are limited to PNG, JPEG, GIF, WebP, and BMP — up to 20 MB each — and are verified by their magic bytes rather than the `Content-Type` header. When a note is deleted, unreferenced images are removed automatically.
-
-### API
-
-The frontend ([`index.html`](index.html)) talks to the backend ([`server.py`](server.py)) over a small JSON API:
-
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| `GET` | `/api/notes` | List all notes (id + title) |
-| `POST` | `/api/notes` | Create a new note |
-| `GET` | `/api/notes/<id>` | Read a single note |
-| `POST` | `/api/notes/<id>` | Update a note's title and body |
-| `POST` | `/api/notes/<id>/title` | Rename a note (plain-text body) |
-| `DELETE` | `/api/notes/<id>` | Delete a note (and garbage-collect orphaned images) |
-| `POST` | `/api/upload` | Upload an image, returns its `/images/...` URL |
-| `GET` | `/images/<file>` | Serve an uploaded image |
-
-### Limits
-
-- Note body: 1 MB
-- Image upload: 20 MB
-- Note title: 120 characters
-- Connection timeout: 10 s (guards against slow clients)
+- **Rich-text notes** (contenteditable with paste sanitization, headings, lists, code blocks)
+- **Real-time collaboration** — edits broadcast over WebSocket to every open editor
+- **Sharing** — per-note collaborators with `edit` / `read` roles
+- **Authentication** — PBKDF2-SHA256 password hashing (600k iterations, salted), HTTP-only session cookies (7-day TTL)
+- **Image uploads** — magic-byte validated (PNG/JPEG/GIF/WebP/BMP), 20 MB cap, size-limited streaming
+- **Security headers** — nosniff, DENY framing, CSP, referrer policy
+- **Zero-config persistence** — SQLite with WAL journaling, thread-local connections, automatic legacy JSON migration
 
 ## Project Structure
 
 ```
-NotepadWeb/
-├── index.html     # The entire frontend — UI, tabs, autosave, i18n, theming
-├── server.py      # Backend — stdlib-only HTTP server, note/image storage, API
-├── favicon.png    # App icon
-└── notes/         # Note files (created automatically)
+hazenotes/
+  main.py            # App assembly, middleware, lifespan, /health
+  config.py          # Env-driven configuration
+  security.py        # Password hashing, session auth, permissions
+  db.py              # SQLite persistence (WAL, schema, migrations)
+  ws.py              # Connection manager + authenticated WS endpoint
+  routers/
+    auth.py          # register / login (rate limited) / logout
+    notes.py         # CRUD + sharing + broadcast
+    pages.py         # HTML pages + favicon
+    uploads.py       # image upload + serving
+  templates/         # login.html, editor.html
+  static/            # favicon
+tests/test_api.py    # assert-based API tests
 ```
+
+## Quickstart
+
+```bash
+pip install -r requirements.txt
+uvicorn hazenotes.main:app --host 0.0.0.0 --port 8123
+```
+
+Open http://localhost:8123, register an account, start writing. All data lives in `./storage/`.
+
+Run tests:
+
+```bash
+python tests/test_api.py
+```
+
+## Configuration
+
+All optional (defaults shown). See `.env.example`.
+
+| Variable | Default | Description |
+|---|---|---|
+| `NOTEPAD_AUTH` | `TRUE` | `FALSE` disables auth (single-user mode, owner `anonymous`) |
+| `NOTEPAD_HOST` / `NOTEPAD_PORT` | `0.0.0.0` / `8123` | Bind address |
+| `NOTEPAD_DATA_DIR` | `./storage/data` | SQLite database directory |
+| `NOTEPAD_IMAGES_DIR` | `./storage/images` | Uploaded images |
+| `NOTEPAD_SESSION_TTL_HOURS` | `168` | Session lifetime (7 days) |
+| `NOTEPAD_MAX_UPLOAD_BYTES` | `20971520` | Upload cap |
+| `NOTEPAD_LOGIN_RATE_LIMIT` / `_WINDOW` | `10` / `300` | Failed logins per IP per window (seconds) |
+
+## API
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `GET` | `/` | cookie | Login page (anonymous) or editor (authenticated) |
+| `GET` | `/health` | — | Liveness probe |
+| `POST` | `/api/auth/register` | — | Create account (3–32 chars `[A-Za-z0-9_-]`, password ≥ 6) |
+| `POST` | `/api/auth/login` | — | Login; sets `session` cookie; rate limited |
+| `POST` | `/api/auth/logout` | cookie | Destroy session |
+| `GET/POST` | `/api/notes` | cookie | List / create notes |
+| `GET/POST/DELETE` | `/api/notes/{id}` | cookie | Read / update / delete (or leave, as collaborator) |
+| `POST/DELETE` | `/api/notes/{id}/share` | cookie (owner) | Add / remove collaborator |
+| `POST/PUT` | `/api/upload` | cookie | Upload image (magic bytes: PNG/JPEG/GIF/WebP/BMP) |
+| `GET` | `/images/{file}` | — | Serve uploaded image |
+| `WS` | `/ws/notes/{id}` | cookie | Real-time note updates |
+
+## Security Notes
+
+- Passwords: PBKDF2-SHA256, per-user random salt. Pre-2.0 unsalted SHA-256 hashes upgrade transparently on next login.
+- Sessions: 32-byte random tokens, stored server-side, expire after TTL, purged at startup and lazily on access.
+- Cookies: `HttpOnly`, `SameSite=Lax`, `Secure` (set automatically when the request is HTTPS / via `X-Forwarded-Proto`).
+- WebSocket: rejected with `4401` before `accept()` when unauthenticated; `4403` when lacking view access.
+- Uploads: never trust extensions — content is sniffed via magic bytes; SVG is rejected (script vector).
+- Brute-force login protection is per-process. Run **one worker** (SQLite WAL + in-memory limiter); scale vertically.
+
+## Deployment
+
+Docker:
+
+```bash
+docker build -t hazenotes .
+docker run -p 8123:8123 -v hazenotes-data:/app/storage hazenotes
+```
+
+Behind a reverse proxy (nginx/Caddy) terminating TLS, use `--proxy-headers` (the Dockerfile already does) so secure cookies activate. Non-root user inside the container; all mutable state in the `/app/storage` volume.
 
 ## License
 
-This project is licensed under the [GNU General Public License v3.0](LICENSE).
+GNU GPL v3
