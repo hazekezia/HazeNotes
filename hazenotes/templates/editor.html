@@ -29,6 +29,8 @@
   .tab .x:hover{color:var(--icon-hover);background:var(--tab-x-hover-bg)}
   .tab .sh{color:var(--tab-x);font-size:12px;line-height:1;padding:0 2px;border-radius:3px}
   .tab .sh:hover{color:var(--icon-hover);background:var(--tab-x-hover-bg)}
+.tab .sh svg{display:block}
+
   .collaborator-actions select{background:var(--tab-bg);color:var(--fg);border:1px solid var(--tab-border);border-radius:4px;padding:3px 6px;margin-right:6px;cursor:pointer}
   .collaborator-actions select option{background:var(--bg);color:var(--fg)}
   .tab.add{background:transparent;border-style:dashed;color:var(--tab-add)}
@@ -290,7 +292,7 @@ function renderTabs(){
     if(isCollab){
       const ci=document.createElement('span');
       ci.className='sh';
-      ci.textContent='👥';
+      ci.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>';
       ci.title=isOwner?t9n('collabNote'):(t9n('ownedBy')+' '+n.owner);
       ci.style.cursor='default';
       tab.appendChild(ci);
@@ -306,7 +308,7 @@ function renderTabs(){
     if(isOwner){
       const sh=document.createElement('span');
       sh.className='sh';
-      sh.innerHTML='🔗';
+      sh.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>';
       sh.title=t9n('shareTitle');
       sh.onclick=(e)=>{e.stopPropagation();openShareModal(n.id);};
       tab.appendChild(sh);
@@ -516,7 +518,7 @@ function applyTheme(theme){
   if(theme==='auto') document.documentElement.removeAttribute('data-theme');
   else document.documentElement.setAttribute('data-theme',theme);
   const isDark=theme==='dark'||(theme==='auto'&&window.matchMedia('(prefers-color-scheme:dark)').matches);
-  document.getElementById('themeBtn').textContent=isDark?'☀':'🌙';
+  document.getElementById('themeBtn').innerHTML=isDark?'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>':'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>';
   document.getElementById('themeBtn').title=isDark?t9n('themeLight'):t9n('themeDark');
 }
 document.getElementById('themeBtn').onclick=()=>{

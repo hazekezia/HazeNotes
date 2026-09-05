@@ -39,7 +39,12 @@ async def serve_index(request: Request):
 def _render_editor_page(current_user: Optional[str]) -> str:
     user_display = current_user if current_user and current_user != 'anonymous' else ''
     user_info_style = 'inline' if user_display else 'none'
-    logout_btn = '<button id="logoutBtn" type="button" title="Logout">🚪</button>' if user_display else ''
+    logout_btn = ('<button id="logoutBtn" type="button" title="Logout">'
+                  '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+                  '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>'
+                  '<polyline points="16 17 21 12 16 7"></polyline>'
+                  '<line x1="21" y1="12" x2="9" y2="12"></line>'
+                  '</svg></button>') if user_display else ''
     logout_script = ''
     if user_display:
         logout_script = 'document.getElementById("logoutBtn").onclick = () => { fetch("/api/auth/logout", {method: "POST"}).then(() => window.location.reload()); };'
