@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi.testclient import TestClient
 
-from hazenotes import config, db
+from hazenotes import __version__, config, db
 from hazenotes.main import app
 
 CHECKS = []
@@ -82,6 +82,32 @@ def run():
         r = client.get('/')
         check('editor page rendered', 'CURRENT_USER_PLACEHOLDER_' not in r.text
               and '[LOGOUT_BUTTON_PLACEHOLDER]' not in r.text)
+        check('settings modal rendered', 'settingsModal' in r.text
+              and f'v{__version__}' in r.text and 'AUTH_USER_PLACEHOLDER_' not in r.text
+              and 'APP_VERSION_PLACEHOLDER_' not in r.text)
+
+        # --- account settings: change username / password ---
+        r = client.post('/api/auth/change-username', json={'new_username': 'alice2', 'current_password': 'wrong'})
+        check('change-username wrong password rejected', r.status_code == 403)
+        r = client.post('/api/auth/change-username', json={'new_username': 'bad name!', 'current_password': 'secret1'})
+        check('change-username bad charset rejected', r.status_code == 400)
+        r = client.post('/api/auth/change-username', json={'new_username': 'anonymous', 'current_password': 'secret1'})
+        check('change-username duplicate rejected', r.status_code == 400)
+        r = client.post('/api/auth/change-username', json={'new_username': 'alice2', 'current_password': 'secret1'})
+        check('change-username ok', r.status_code == 200 and r.json()['username'] == 'alice2')
+        check('notes carried to renamed user', db.get_note(note_id)['owner'] == 'alice2')
+        check('session survives rename', db.get_session_user(token) == 'alice2')
+        r = TestClient(app).post('/api/auth/change-username', json={'new_username': 'x', 'current_password': 'y'})
+        check('change-username anonymous blocked', r.status_code == 401)
+        r = client.post('/api/auth/change-password', json={'current_password': 'wrong', 'new_password': 'secret9'})
+        check('change-password wrong current rejected', r.status_code == 403)
+        r = client.post('/api/auth/change-password', json={'current_password': 'secret1', 'new_password': 'short'})
+        check('change-password too short rejected', r.status_code == 400)
+        r = client.post('/api/auth/change-password', json={'current_password': 'secret1', 'new_password': 'secret9'})
+        check('change-password ok', r.status_code == 200)
+        fresh = TestClient(app)
+        r = fresh.post('/api/auth/login', json={'username': 'alice2', 'password': 'secret9'})
+        check('login with new credentials', r.status_code == 200)
 
         # --- sharing / permissions ---
         r = client.post('/api/auth/register', json={'username': 'bob', 'password': 'secret2'})
@@ -127,8 +153,8 @@ def run():
             check('ws without session rejected', True)
 
         # --- session expiry ---
-        exp_token = db.create_session('alice')
-        check('fresh session valid', db.get_session_user(exp_token) == 'alice')
+        exp_token = db.create_session('alice2')
+        check('fresh session valid', db.get_session_user(exp_token) == 'alice2')
         conn = db.get_db_connection()
         conn.execute('UPDATE sessions SET expires_at = ? WHERE token = ?',
                      ((datetime.now() - timedelta(hours=1)).isoformat(), exp_token))

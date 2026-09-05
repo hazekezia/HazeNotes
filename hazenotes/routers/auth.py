@@ -7,7 +7,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from .. import config, db
-from ..security import check_password, cookie_secure, hash_password
+from ..security import check_password, cookie_secure, get_current_user, hash_password
 
 router = APIRouter()
 
@@ -89,6 +89,61 @@ async def handle_register(request: Request):
         return JSONResponse({'error': 'Username already exists'}, status_code=400)
 
     return JSONResponse({'status': 'ok', 'message': 'Account created successfully'})
+
+
+@router.post('/api/auth/change-username')
+async def handle_change_username(request: Request):
+    user = await get_current_user(request)
+    if not user or user == 'anonymous':
+        return JSONResponse({'error': 'Authentication required'}, status_code=401)
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse({'error': 'Invalid request body'}, status_code=400)
+
+    new_username = str(data.get('new_username', '')).strip()
+    current_password = str(data.get('current_password', ''))
+
+    if not _username_re.fullmatch(new_username):
+        return JSONResponse({'error': 'Username must be 3-32 characters (letters, numbers, _ or -)'}, status_code=400)
+
+    row = await asyncio.to_thread(db.get_user, user)
+    ok, _ = check_password(row['password'], current_password) if row else (False, None)
+    if not ok:
+        return JSONResponse({'error': 'Current password is incorrect'}, status_code=403)
+
+    if new_username != user:
+        renamed = await asyncio.to_thread(db.rename_user, user, new_username)
+        if not renamed:
+            return JSONResponse({'error': 'Username already exists'}, status_code=400)
+    return JSONResponse({'status': 'ok', 'username': new_username})
+
+
+@router.post('/api/auth/change-password')
+async def handle_change_password(request: Request):
+    user = await get_current_user(request)
+    if not user or user == 'anonymous':
+        return JSONResponse({'error': 'Authentication required'}, status_code=401)
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse({'error': 'Invalid request body'}, status_code=400)
+
+    current_password = str(data.get('current_password', ''))
+    new_password = str(data.get('new_password', ''))
+    if not new_password or len(new_password) < 6:
+        return JSONResponse({'error': 'Password must be at least 6 characters'}, status_code=400)
+    if len(new_password) > 128:
+        return JSONResponse({'error': 'Password must be at most 128 characters'}, status_code=400)
+
+    row = await asyncio.to_thread(db.get_user, user)
+    ok, _ = check_password(row['password'], current_password) if row else (False, None)
+    if not ok:
+        return JSONResponse({'error': 'Current password is incorrect'}, status_code=403)
+
+    pwd_hash = await asyncio.to_thread(hash_password, new_password)
+    await asyncio.to_thread(db.update_user_password, user, pwd_hash)
+    return JSONResponse({'status': 'ok'})
 
 
 @router.post('/api/auth/logout')
