@@ -39,14 +39,35 @@
   #t:empty::before{content:attr(data-ph);color:var(--ph)}
   #t img{max-width:100%;height:auto;border-radius:6px;margin:8px 0;display:block}
   #t img:active,#t img:focus{outline:2px solid var(--tab-focus-ring)}
-  #themeBtn,#featureBtn{background:transparent;border:1px solid transparent;color:var(--icon);width:28px;height:28px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:14px;padding:0;flex:0 0 auto}
-  #themeBtn:hover,#featureBtn:hover{color:var(--icon-hover);background:var(--icon-bg-hover)}
-  #langSel{background:transparent;color:var(--icon);border:1px solid var(--tab-border);border-radius:6px;font:inherit;font-size:12px;padding:3px 6px;cursor:pointer;height:28px;flex:0 0 auto}
-  #langSel:hover{color:var(--icon-hover);background:var(--icon-bg-hover)}
-  #langSel option{background:var(--bg);color:var(--fg)}
+  #themeBtn,#settingsBtn{background:transparent;border:1px solid transparent;color:var(--icon);width:28px;height:28px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:14px;padding:0;flex:0 0 auto}
+  #themeBtn:hover,#settingsBtn:hover{color:var(--icon-hover);background:var(--icon-bg-hover)}
   #userInfo{color:var(--fg);font-size:12px;padding:4px 10px;background:var(--tab-bg);border-radius:6px}
   #logoutBtn{background:transparent;border:1px solid transparent;color:var(--icon);width:28px;height:28px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:14px;padding:0;flex:0 0 auto}
   #logoutBtn:hover{color:var(--icon-hover);background:var(--icon-bg-hover)}
+
+  /* Settings modal */
+  .settings-section{margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid var(--bar-border)}
+  .settings-section:last-of-type{border-bottom:none;margin-bottom:0;padding-bottom:0}
+  .settings-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin:0 0 12px}
+  .settings-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+  .settings-user{display:inline-flex;align-items:center;gap:6px;color:var(--fg);font-size:13px;font-weight:600;padding:5px 12px;background:var(--tab-bg);border:1px solid var(--tab-border);border-radius:6px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .seg{display:inline-flex;border:1px solid var(--tab-border);border-radius:8px;overflow:hidden}
+  .seg button{background:transparent;border:none;color:var(--muted);font:inherit;font-size:13px;padding:7px 18px;cursor:pointer}
+  .seg button+button{border-left:1px solid var(--tab-border)}
+  .seg button.active{background:var(--tab-active-bg);color:var(--fg);font-weight:600}
+  .settings-btn{width:100%;padding:10px;background:var(--tab-active-bg);color:var(--fg);border:1px solid var(--tab-border);border-radius:6px;cursor:pointer;font:inherit;font-size:13px;margin:4px 0 12px}
+  .settings-btn:hover{border-color:var(--tab-active-border);color:var(--tab-active-fg)}
+  .settings-link{background:none;border:none;color:var(--muted);font:inherit;font-size:12px;cursor:pointer;padding:4px 8px;border-radius:6px;flex:0 0 auto}
+  .settings-link:hover{color:var(--icon-hover);background:var(--icon-bg-hover)}
+  .settings-field{display:inline-flex;align-items:center;gap:10px;font-size:13px;color:var(--fg);min-width:0}
+  .settings-inline{margin-bottom:14px}
+  .settings-inline-actions{display:flex;align-items:center;gap:8px}
+  .settings-inline-actions .settings-btn{width:auto;flex:1;margin:4px 0}
+  .settings-msg{min-height:18px;font-size:12px;margin:6px 0 0;text-align:center;color:var(--muted)}
+  .settings-footer{margin-top:18px;padding-top:16px;border-top:1px solid var(--bar-border);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+  .settings-footer a{color:var(--muted);text-decoration:none;border-bottom:1px dotted var(--muted)}
+  .settings-footer a:hover{color:var(--fg);border-bottom-color:var(--fg)}
+  .settings-meta{display:flex;align-items:center;gap:6px}
   
   /* Collaboration modal */
   .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center}
@@ -74,11 +95,7 @@
     <div class="fade-r"></div>
   </div>
   <span id="st"></span>
-  <select id="langSel" title="Language">
-    <option value="en">EN</option>
-    <option value="id">ID</option>
-  </select>
-  <button id="featureBtn" type="button" title="Features">&nbsp;✦&nbsp;</button>
+  <button id="settingsBtn" type="button" data-i18n-title="settingsTitle" title="Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
   <button id="themeBtn" type="button" title="Toggle dark/light"></button>
   [LOGOUT_BUTTON_PLACEHOLDER]
 </div>
@@ -111,34 +128,56 @@
   </div>
 </div>
 
-<!-- Features Info Modal -->
-<div id="featuresModal" class="modal">
+<!-- Settings Modal -->
+<div id="settingsModal" class="modal">
   <div class="modal-content">
     <div class="modal-header">
-      <h2 class="modal-title">✨ Features</h2>
-      <button class="close-btn" onclick="closeFeaturesModal()">×</button>
+      <h2 class="modal-title" data-i18n="settingsTitle">Settings</h2>
+      <button class="close-btn" onclick="closeSettingsModal()">×</button>
     </div>
-    <div style="line-height:1.8;">
-      <h3 style="margin-top:20px;">🔐 Authentication</h3>
-      <p>If authentication is enabled, you need to login to access your personal notes.</p>
-      
-      <h3 style="margin-top:20px;">📝 User-Specific Notes</h3>
-      <p>Each user has their own separate notes. Your notes are private by default.</p>
-      
-      <h3 style="margin-top:20px;">🤝 Collaboration</h3>
-      <p>Share your notes with other users. They can view and edit the same note in real-time!</p>
-      
-      <h3 style="margin-top:20px;">⚡ High Performance Real-Time Sync</h3>
-      <p>Instant synchronization via persistent WebSockets & SQLite WAL mode for fast concurrency.</p>
-      
-      <h3 style="margin-top:20px;">🖼️ Image Support</h3>
-      <p>Paste or drag & drop images directly into your notes.</p>
-      
-      <h3 style="margin-top:20px;">🌗 Dark/Light Mode</h3>
-      <p>Switch between dark and light themes based on your preference.</p>
-      
-      <h3 style="margin-top:20px;">📱 Multi-Language</h3>
-      <p>Support for English and Indonesian languages.</p>
+    <div id="accountSection" class="settings-section">
+      <p class="settings-label" data-i18n="account">Account</p>
+      <div class="settings-row">
+        <span class="settings-field"><span data-i18n="usernameLbl">Username</span><span id="settingsUser" class="settings-user"></span></span>
+        <button type="button" class="settings-link" onclick="toggleAccountForm('u')" data-i18n="edit">Edit</button>
+      </div>
+      <div id="usernameForm" class="settings-inline" style="display:none">
+        <input type="text" id="newUsername" class="share-link-input" autocomplete="username" maxlength="32" data-i18n-ph="newUsername" placeholder="New username">
+        <input type="password" id="unCurPassword" class="share-link-input" autocomplete="current-password" data-i18n-ph="currentPassword" placeholder="Current password">
+        <div class="settings-inline-actions">
+          <button type="button" class="settings-btn" onclick="changeUsername()" data-i18n="save">Save</button>
+          <button type="button" class="settings-link" onclick="toggleAccountForm(null)" data-i18n="cancel">Cancel</button>
+        </div>
+      </div>
+      <div class="settings-row">
+        <span class="settings-field"><span data-i18n="passwordLbl">Password</span><span class="settings-user">••••••••</span></span>
+        <button type="button" class="settings-link" onclick="toggleAccountForm('p')" data-i18n="edit">Edit</button>
+      </div>
+      <div id="passwordForm" class="settings-inline" style="display:none">
+        <input type="password" id="pwCurPassword" class="share-link-input" autocomplete="current-password" data-i18n-ph="currentPassword" placeholder="Current password">
+        <input type="password" id="pwNewPassword" class="share-link-input" autocomplete="new-password" data-i18n-ph="newPassword" placeholder="New password">
+        <input type="password" id="pwConfirm" class="share-link-input" autocomplete="new-password" data-i18n-ph="confirmPassword" placeholder="Confirm new password">
+        <div class="settings-inline-actions">
+          <button type="button" class="settings-btn" onclick="changePassword()" data-i18n="save">Save</button>
+          <button type="button" class="settings-link" onclick="toggleAccountForm(null)" data-i18n="cancel">Cancel</button>
+        </div>
+      </div>
+      <p id="settingsMsg" class="settings-msg"></p>
+    </div>
+    <div class="settings-section">
+      <p class="settings-label" data-i18n="language">Language</p>
+      <div class="seg" id="langSeg">
+        <button type="button" data-lang="en">EN</button>
+        <button type="button" data-lang="id">ID</button>
+      </div>
+    </div>
+    <div class="settings-footer">
+      <span>
+        <span data-i18n="creditsBy">Credits by</span>
+        <a href="https://github.com/hazekezia/HazeNotes" target="_blank" rel="noopener">hazekezia</a> ·
+        <a href="https://github.com/hazekezia/HazeNotes" target="_blank" rel="noopener" data-i18n="contribute">Want to contribute?</a>
+      </span>
+      <span class="settings-meta"><span>GPL-3.0</span><span>·</span><span>vAPP_VERSION_PLACEHOLDER_</span></span>
     </div>
   </div>
 </div>
@@ -160,6 +199,13 @@ const I18N={
     roleEdit:'Can edit',readOnly:'Read only',
     enterUsername:'Enter username',yourLink:'Your note link',
     collabNote:'Shared note',ownedBy:'Owned by',
+    settingsTitle:'Settings',account:'Account',
+    usernameLbl:'Username',passwordLbl:'Password',edit:'Edit',save:'Save',cancel:'Cancel',
+    newUsername:'New username',currentPassword:'Current password',
+    newPassword:'New password',confirmPassword:'Confirm new password',
+    usernameUpdated:'Username updated',passwordUpdated:'Password updated',
+    pwMismatch:'New passwords do not match',settingsFail:'Update failed',
+    language:'Language',contribute:'Want to contribute?',creditsBy:'Credits by',
   },
   id:{
     untitled:'Tanpa judul',newTab:'Tab baru',renameHint:'Klik untuk edit',
@@ -175,6 +221,13 @@ const I18N={
     roleEdit:'Bisa edit',readOnly:'Baca saja',
     enterUsername:'Masukkan nama pengguna',yourLink:'Link note Anda',
     collabNote:'Note bersama',ownedBy:'Milik',
+    settingsTitle:'Pengaturan',account:'Akun',
+    usernameLbl:'Nama Pengguna',passwordLbl:'Kata Sandi',edit:'Ubah',save:'Simpan',cancel:'Batal',
+    newUsername:'Nama pengguna baru',currentPassword:'Kata sandi saat ini',
+    newPassword:'Kata sandi baru',confirmPassword:'Konfirmasi kata sandi baru',
+    usernameUpdated:'Nama pengguna diperbarui',passwordUpdated:'Kata sandi diperbarui',
+    pwMismatch:'Kata sandi baru tidak cocok',settingsFail:'Gagal memperbarui',
+    language:'Bahasa',contribute:'Ingin berkontribusi?',creditsBy:'Kredit oleh',
   },
 };
 const LANG_KEY='webnotepad.lang';
@@ -184,7 +237,7 @@ const t9n=(k)=>(I18N[lang]&&I18N[lang][k])||I18N.en[k]||k;
 
 let timer,lastSent=null,currentId=null,notes=[],dirty=false,saving=false,currentUser=CURRENT_USER_PLACEHOLDER_;
 let noteRoles={},canEditCurrent=true;
-const featuresEnabled=true;
+const AUTH_USER=AUTH_USER_PLACEHOLDER_;
 
 // ==================== REAL-TIME WEBSOCKET CLIENT ====================
 let ws = null;
@@ -503,14 +556,18 @@ function caretEnd(){
 function applyLang(){
   t.setAttribute('data-ph', t9n('placeholder'));
   st.textContent=(saving||dirty) ? t9n('saving') : (!canEditCurrent ? t9n('readOnly') : t9n('saved'));
+  document.querySelectorAll('[data-i18n]').forEach(el=>{el.textContent=t9n(el.dataset.i18n);});
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{el.placeholder=t9n(el.dataset.i18nPh);});
+  document.querySelectorAll('[data-i18n-title]').forEach(el=>{el.title=t9n(el.dataset.i18nTitle);});
+  syncLangSeg();
   renderTabs();
 }
-document.getElementById('langSel').value=lang;
-document.getElementById('langSel').onchange=(e)=>{
-  lang=e.target.value;
-  localStorage.setItem(LANG_KEY,lang);
-  applyLang();
-};
+function syncLangSeg(){
+  document.querySelectorAll('#langSeg button').forEach(b=>b.classList.toggle('active',b.dataset.lang===lang));
+}
+document.querySelectorAll('#langSeg button').forEach(b=>{
+  b.onclick=()=>{lang=b.dataset.lang;localStorage.setItem(LANG_KEY,lang);applyLang();};
+});
 
 const THEME_KEY='webnotepad.theme';
 function getTheme(){return localStorage.getItem(THEME_KEY)||'auto'}
@@ -534,9 +591,67 @@ window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{
   if(getTheme()==='auto') applyTheme('auto');
 });
 
-// Features modal
-document.getElementById('featureBtn').onclick=()=>document.getElementById('featuresModal').classList.add('show');
-function closeFeaturesModal(){document.getElementById('featuresModal').classList.remove('show');}
+// Settings modal
+document.getElementById('settingsBtn').onclick=()=>{
+  document.getElementById('settingsUser').textContent=currentUser;
+  document.getElementById('accountSection').style.display=AUTH_USER?'':'none';
+  toggleAccountForm(null);
+  syncLangSeg();
+  settingsMsg('');
+  document.getElementById('settingsModal').classList.add('show');
+};
+function toggleAccountForm(which){
+  document.getElementById('usernameForm').style.display=which==='u'?'':'none';
+  document.getElementById('passwordForm').style.display=which==='p'?'':'none';
+  settingsMsg('');
+  if(which) document.getElementById(which==='u'?'newUsername':'pwCurPassword').focus();
+}
+function closeSettingsModal(){document.getElementById('settingsModal').classList.remove('show');}
+function settingsMsg(text,ok){
+  const el=document.getElementById('settingsMsg');
+  el.textContent=text;
+  el.style.color=ok?'var(--muted)':'#d9534f';
+}
+async function changeUsername(){
+  const newUsername=document.getElementById('newUsername').value.trim();
+  const res=await fetch('/api/auth/change-username',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({new_username:newUsername,current_password:document.getElementById('unCurPassword').value})
+  });
+  const d=await res.json().catch(()=>({}));
+  if(res.ok){
+    currentUser=d.username;
+    document.getElementById('userInfo').textContent=currentUser;
+    document.getElementById('settingsUser').textContent=currentUser;
+    document.getElementById('newUsername').value='';
+    document.getElementById('unCurPassword').value='';
+    toggleAccountForm(null);
+    settingsMsg(t9n('usernameUpdated'),true);
+  }else{
+    settingsMsg(d.error||t9n('settingsFail'),false);
+  }
+}
+async function changePassword(){
+  const newPwd=document.getElementById('pwNewPassword').value;
+  if(newPwd!==document.getElementById('pwConfirm').value){
+    settingsMsg(t9n('pwMismatch'),false);
+    return;
+  }
+  const res=await fetch('/api/auth/change-password',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({current_password:document.getElementById('pwCurPassword').value,new_password:newPwd})
+  });
+  const d=await res.json().catch(()=>({}));
+  if(res.ok){
+    ['pwCurPassword','pwNewPassword','pwConfirm'].forEach(id=>document.getElementById(id).value='');
+    toggleAccountForm(null);
+    settingsMsg(t9n('passwordUpdated'),true);
+  }else{
+    settingsMsg(d.error||t9n('settingsFail'),false);
+  }
+}
 
 // Share modal
 async function openShareModal(noteId){

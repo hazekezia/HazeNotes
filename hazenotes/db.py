@@ -262,6 +262,34 @@ def update_user_password(username: str, password_hash: str) -> bool:
     conn.commit()
     return updated
 
+def rename_user(old_username: str, new_username: str) -> bool:
+    """Move a user to a new name, carrying notes, collaborations, and sessions.
+
+    ponytail: collaborators PK (note_id, username) can collide when the new name
+    already collaborates on a note the old name collaborates on; IntegrityError
+    -> rollback -> caller returns 400.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT password_hash, created_at FROM users WHERE username = ?", (old_username,))
+    row = cursor.fetchone()
+    if not row:
+        return False
+    try:
+        cursor.execute(
+            "INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)",
+            (new_username, row['password_hash'], row['created_at'])
+        )
+        cursor.execute("UPDATE notes SET owner = ? WHERE owner = ?", (new_username, old_username))
+        cursor.execute("UPDATE collaborators SET username = ? WHERE username = ?", (new_username, old_username))
+        cursor.execute("UPDATE sessions SET username = ? WHERE username = ?", (new_username, old_username))
+        cursor.execute("DELETE FROM users WHERE username = ?", (old_username,))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        conn.rollback()
+        return False
+
 # ==================== NOTE OPERATIONS ====================
 
 def get_user_notes(username: str) -> List[Dict[str, Any]]:

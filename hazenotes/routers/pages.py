@@ -6,7 +6,7 @@ from typing import Optional
 from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse, HTMLResponse
 
-from .. import config
+from .. import __version__, config
 from ..security import get_current_user
 
 router = APIRouter()
@@ -55,4 +55,6 @@ def _render_editor_page(current_user: Optional[str]) -> str:
     # json.dumps escapes quotes; "<\\/" also neutralizes </script> breakouts.
     html = html.replace('CURRENT_USER_PLACEHOLDER_', json.dumps(current_user or 'anonymous').replace('</', '<\\/'))
     html = html.replace('LOGOUT_SCRIPT_PLACEHOLDER', logout_script)
+    html = html.replace('APP_VERSION_PLACEHOLDER_', __version__)
+    html = html.replace('AUTH_USER_PLACEHOLDER_', 'true' if user_display else 'false')
     return html
