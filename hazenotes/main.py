@@ -3,7 +3,6 @@
 Run: uvicorn hazenotes.main:app --host 0.0.0.0 --port 8123
 """
 import logging
-import sys
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -12,14 +11,6 @@ from fastapi.responses import JSONResponse
 from . import config, db
 from .routers import auth, notes, pages, uploads
 from .ws import router as ws_router
-
-# Ensure UTF-8 output in Windows PowerShell/cmd
-if hasattr(sys.stdout, 'reconfigure'):
-    try:
-        sys.stdout.reconfigure(encoding='utf-8')
-        sys.stderr.reconfigure(encoding='utf-8')
-    except Exception:
-        pass
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s: %(message)s')
 logger = logging.getLogger('hazenotes')

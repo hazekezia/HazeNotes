@@ -6,6 +6,7 @@ Run either way:
 """
 import hashlib
 import os
+import subprocess
 import sys
 import tempfile
 from datetime import datetime, timedelta
@@ -202,6 +203,25 @@ def run():
         check('legacy hash login ok', r.status_code == 200)
         check('legacy hash upgraded to pbkdf2',
               db.get_user('carol')['password'].startswith('pbkdf2_sha256$'))
+
+        # --- .env loading in a fresh process: BOM tolerance + bare PORT fallback ---
+        envdir = tempfile.mkdtemp(prefix='hazetest-env-')
+        env_data_dir = os.path.join(envdir, 'bomdata')
+        with open(os.path.join(envdir, '.env'), 'w', encoding='utf-8-sig', newline='\n') as fh:
+            fh.write(f'NOTEPAD_DATA_DIR={env_data_dir}\n')
+        probe_env = {k: v for k, v in os.environ.items()
+                     if k not in ('NOTEPAD_DATA_DIR', 'NOTEPAD_PORT')}
+        probe_env['PORT'] = '9999'
+        probe_env['PYTHONPATH'] = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        probe = subprocess.run(
+            [sys.executable, '-c',
+             'from hazenotes import config; print(config.DATA_DIR); print(config.PORT)'],
+            cwd=envdir, env=probe_env, capture_output=True, text=True)
+        probed = [line.strip() for line in probe.stdout.splitlines() if line.strip()]
+        check('BOM .env still loads its first key', probed[:1] == [env_data_dir])
+        check('bare PORT is honoured', probed[1:2] == ['9999'])
+        if probe.returncode:
+            print('   env probe error:', probe.stderr.strip()[:200])
 
     failed = [n for n, ok in CHECKS if not ok]
     print(f'\n{len(CHECKS) - len(failed)}/{len(CHECKS)} checks passed')

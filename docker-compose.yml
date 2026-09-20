@@ -1,0 +1,20 @@
+# LAN-accessible by default: any machine on the same network reaches the app at
+# http://<this-host-ip>:8123. Copy .env.example to .env first (env_file below).
+#
+# Before exposing it to the internet, change the port mapping to
+# "127.0.0.1:8123:8123" and put a TLS-terminating reverse proxy in front.
+# See docs/DEPLOYMENT.md.
+services:
+  hazenotes:
+    build: .
+    container_name: hazenotes
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8123:8123"
+    volumes:
+      - hazenotes-data:/app/storage
+
+volumes:
+  hazenotes-data:

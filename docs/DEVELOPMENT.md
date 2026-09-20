@@ -1,6 +1,6 @@
 # Development guide
 
-Architecture, project layout, and internals. Deployment, configuration, and operations live in the [README](../README.md).
+Architecture, project layout, and internals. Installation and settings live in the [README](../README.md); operations in [DEPLOYMENT.md](DEPLOYMENT.md); endpoints in [API.md](API.md); the security model in [SECURITY.md](SECURITY.md); the end-user guide in [USAGE.md](USAGE.md).
 
 ## Project layout
 
@@ -24,6 +24,16 @@ hazenotes/
     favicon.png      # served at /favicon.png, also used as the project logo
 tests/
   test_api.py        # end-to-end assert-based tests
+docs/
+  USAGE.md           # end-user guide (accounts, writing, sharing, FAQ, glossary)
+  DEPLOYMENT.md      # production checklist, reverse proxy, container platforms, backup, upgrades
+  API.md             # HTTP + WebSocket endpoint reference
+  SECURITY.md        # security model and known limitations
+  DEVELOPMENT.md     # this file
+Dockerfile           # python:3.12-slim, non-root, PORT / FORWARDED_ALLOW_IPS knobs, HEALTHCHECK
+docker-compose.yml   # LAN-accessible stack that reads .env
+requirements.txt     # fastapi, uvicorn[standard], python-dotenv, httpx (tests)
+.env.example         # every supported environment variable with its default
 ```
 
 ## Request lifecycle
@@ -64,9 +74,9 @@ No template engine: `_load_template()` reads the HTML once and caches it, then `
 
 ## Configuration internals
 
-`hazenotes/config.py` reads the environment once, at import time — tests must therefore set `NOTEPAD_DATA_DIR` / `NOTEPAD_IMAGES_DIR` *before* importing the package (`tests/test_api.py` does exactly that, into a temp directory). Settings also configurable at runtime do not exist by design: restart to change configuration. Limits that are code constants rather than environment variables: `MAX_NOTE_BYTES` (1,000,000), `MAX_TITLE_LEN` (120).
+`hazenotes/config.py` reads the environment once, at import time — tests must therefore set `NOTEPAD_DATA_DIR` / `NOTEPAD_IMAGES_DIR` *before* importing the package (`tests/test_api.py` does exactly that, into a temp directory). Settings also configurable at runtime do not exist by design: restart to change configuration. Limits that are code constants rather than environment variables: `MAX_NOTE_BYTES` (1,000,000), `MAX_TITLE_LEN` (120). `PORT` is consulted only when `NOTEPAD_PORT` is unset — that is the variable container platforms inject.
 
-HazeNotes never loads a `.env` file; supply real environment variables or start uvicorn with `--env-file .env`.
+`config.py` also loads a `.env` from the working directory through `python-dotenv`, parsed as `utf-8-sig` so a byte-order mark cannot swallow the first key, and with `override=False`: variables already present in the real environment always win, which is what containers and cloud platforms rely on. Docker images contain no `.env` at all, so there it is a no-op. `python-dotenv` is the one dependency added for this; it is already part of `uvicorn[standard]` and is pinned in `requirements.txt`.
 
 ## Legacy JSON migration
 
@@ -86,7 +96,7 @@ python tests/test_api.py     # prints PASS/FAIL per check, exits non-zero on fai
 pytest tests                 # optional; pytest picks up the same file
 ```
 
-It isolates storage in a temp directory, then covers health and security headers, registration and login validation, notes CRUD and permission checks for owners/collaborators/strangers, sharing, the settings endpoints (username and password changes), image upload validation plus orphan-image garbage collection (including a path-traversal attempt), WebSocket auth, session expiry, and the legacy hash upgrade — 53 checks in total. `httpx` is the only extra dependency (`fastapi.testclient`), listed in `requirements.txt`. The per-IP login limiter is not covered yet; it needs a test that drives `NOTEPAD_LOGIN_RATE_LIMIT` low.
+It isolates storage in a temp directory, then covers health and security headers, registration and login validation, notes CRUD and permission checks for owners/collaborators/strangers, sharing, the settings endpoints (username and password changes), image upload validation plus orphan-image garbage collection (including a path-traversal attempt), WebSocket auth, session expiry, and the legacy hash upgrade — 55 checks in total. Two of them re-import the package in a fresh subprocess to prove that a BOM-prefixed `.env` is still parsed and that a bare `PORT` is honoured. `httpx` is the only test extra (`fastapi.testclient`), listed in `requirements.txt`. The per-IP login limiter is not covered yet; it needs a test that drives `NOTEPAD_LOGIN_RATE_LIMIT` low.
 
 ## Conventions
 
