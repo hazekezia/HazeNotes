@@ -396,6 +396,13 @@ def delete_note(note_id: str) -> bool:
     conn.commit()
     return deleted
 
+def notes_referencing(needle: str) -> int:
+    """Count notes whose content contains `needle` (keeps shared images alive)."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM notes WHERE instr(content, ?) > 0", (needle,))
+    return cursor.fetchone()[0]
+
 def add_collaborator(note_id: str, username: str, role: str = 'edit') -> bool:
     conn = get_db_connection()
     cursor = conn.cursor()
