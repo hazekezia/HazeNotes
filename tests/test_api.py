@@ -137,6 +137,39 @@ def run():
         r = client.post('/api/upload', content=b'not-an-image-at-all')
         check('garbage upload rejected', r.status_code == 400)
 
+        # --- image cleanup when notes are deleted ---
+        img = client.post('/api/upload', content=PNG).json()['url']
+        img_path = os.path.join(config.IMAGES_DIR, os.path.basename(img))
+        check('uploaded file exists on disk', os.path.isfile(img_path))
+
+        shared = client.post('/api/upload', content=PNG).json()['url']
+        shared_path = os.path.join(config.IMAGES_DIR, os.path.basename(shared))
+        unsaved = client.post('/api/upload', content=PNG).json()['url']
+        unsaved_path = os.path.join(config.IMAGES_DIR, os.path.basename(unsaved))
+
+        n1 = client.post('/api/notes', json={'title': 'with image'}).json()['id']
+        client.post(f'/api/notes/{n1}', json={'note': f'<p>pic</p><img src="{img}">'})
+        n2 = client.post('/api/notes', json={'title': 'shares image'}).json()['id']
+        client.post(f'/api/notes/{n2}', json={'note': f'<img src="{shared}"><img src="{img}">'})
+
+        r = client.delete(f'/api/notes/{n2}')
+        check('delete note that shares an image', r.status_code == 200)
+        check('image kept while another note still references it', os.path.isfile(img_path))
+        check('image only that note used is removed', not os.path.exists(shared_path))
+
+        r = client.delete(f'/api/notes/{n1}')
+        check('delete note holding the last reference', r.status_code == 200)
+        check('orphan image removed from disk', not os.path.exists(img_path))
+        check('unrelated saved upload untouched', os.path.isfile(unsaved_path))
+
+        probe = os.path.join(_TMP, 'probe.txt')
+        with open(probe, 'w', encoding='utf-8') as f:
+            f.write('keep me')
+        n3 = client.post('/api/notes', json={'title': 'traversal'}).json()['id']
+        client.post(f'/api/notes/{n3}', json={'note': '<img src="/images/../probe.txt">'})
+        client.delete(f'/api/notes/{n3}')
+        check('traversal path cannot delete outside images dir', os.path.isfile(probe))
+
         # --- websocket auth ---
         try:
             with client.websocket_connect(f'/ws/notes/{note_id}', cookies={'session': token}):

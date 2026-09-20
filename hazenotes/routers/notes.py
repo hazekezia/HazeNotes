@@ -1,5 +1,7 @@
 """Notes CRUD + collaborator sharing + real-time broadcast."""
 import asyncio
+import os
+import re
 import uuid
 
 from fastapi import APIRouter, Request
@@ -14,6 +16,20 @@ router = APIRouter()
 
 def _unauthorized():
     return JSONResponse({'error': 'Authentication required'}, status_code=401)
+
+
+_IMG_REF = re.compile(r'/images/([A-Za-z0-9._-]+)')
+
+
+def _delete_unreferenced_images(content: str):
+    """Delete image files that only the deleted note used; files still referenced stay."""
+    for name in set(_IMG_REF.findall(content or '')):
+        if name in ('.', '..') or db.notes_referencing('/images/' + name):
+            continue
+        try:
+            os.remove(os.path.join(config.IMAGES_DIR, name))
+        except OSError:
+            pass  # already gone, or not a regular file
 
 
 @router.get('/api/notes')
@@ -125,6 +141,7 @@ async def delete_note(note_id: str, request: Request):
 
     # Owner: fully delete the note
     await asyncio.to_thread(db.delete_note, note_id)
+    await asyncio.to_thread(_delete_unreferenced_images, note.get('content') or '')
     await ws_manager.broadcast(note_id, {'type': 'note_deleted', 'note_id': note_id})
     return {'deleted': True}
 
