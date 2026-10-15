@@ -143,6 +143,24 @@ def run():
         img_path = os.path.join(config.IMAGES_DIR, os.path.basename(img))
         check('uploaded file exists on disk', os.path.isfile(img_path))
 
+        removed_on_edit = client.post('/api/upload', content=PNG).json()['url']
+        removed_on_edit_path = os.path.join(config.IMAGES_DIR, os.path.basename(removed_on_edit))
+        shared_on_edit = client.post('/api/upload', content=PNG).json()['url']
+        shared_on_edit_path = os.path.join(config.IMAGES_DIR, os.path.basename(shared_on_edit))
+        edit_note = client.post('/api/notes', json={'title': 'edit image cleanup'}).json()['id']
+        keep_note = client.post('/api/notes', json={'title': 'keep shared image'}).json()['id']
+        client.post(f'/api/notes/{edit_note}', json={
+            'note': f'<img src="{removed_on_edit}"><img src="{shared_on_edit}">'
+        })
+        client.post(f'/api/notes/{keep_note}', json={'note': f'<img src="{shared_on_edit}">'})
+        r = client.post(f'/api/notes/{edit_note}', json={'note': f'<p>image removed</p><img src="{shared_on_edit}">'})
+        check('image removed from note is deleted', r.status_code == 200 and not os.path.exists(removed_on_edit_path))
+        check('image remains while another note references it', os.path.isfile(shared_on_edit_path))
+        client.delete(f'/api/notes/{edit_note}')
+        check('delete note keeps image referenced elsewhere', os.path.isfile(shared_on_edit_path))
+        client.delete(f'/api/notes/{keep_note}')
+        check('image deleted after final referencing note is deleted', not os.path.exists(shared_on_edit_path))
+
         shared = client.post('/api/upload', content=PNG).json()['url']
         shared_path = os.path.join(config.IMAGES_DIR, os.path.basename(shared))
         unsaved = client.post('/api/upload', content=PNG).json()['url']
