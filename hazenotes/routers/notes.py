@@ -110,7 +110,9 @@ async def update_note(note_id: str, request: Request):
         if len(content.encode('utf-8')) > config.MAX_NOTE_BYTES:
             return JSONResponse({'error': 'Note too large'}, status_code=413)
 
-    await asyncio.to_thread(db.update_note, note_id, title, content)
+    updated = await asyncio.to_thread(db.update_note, note_id, title, content)
+    if updated and content is not None:
+        await asyncio.to_thread(_delete_unreferenced_images, note.get('content') or '')
 
     # Broadcast to other WebSocket subscribers in real-time
     ws_payload = {'type': 'note_update', 'note_id': note_id, 'sender': user}

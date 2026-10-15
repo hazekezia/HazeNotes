@@ -109,5 +109,4 @@ It isolates storage in a temp directory, then covers health and security headers
 
 - Registration limiting / invite codes (today: open endpoint, mitigated at the proxy).
 - Per-user storage quotas; the disk is currently unbounded.
-- Garbage collection of images removed from a note body during an edit (today only note deletion does it).
 - Multiple instances would need shared session storage, a shared rate limiter, and a WebSocket fan-out (e.g. Redis) — out of scope for the single-file design.

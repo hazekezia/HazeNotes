@@ -511,12 +511,32 @@ function uploadImages(files){
     }).finally(()=>{if(++done===files.length) save()});
   });
 }
+function insertPlainText(text){
+  const selection=window.getSelection();
+  if(!selection?.rangeCount) return;
+  const range=selection.getRangeAt(0);
+  if(!t.contains(range.commonAncestorContainer)) return;
+  const lines=text.replace(/\r\n?/g,'\n').split('\n');
+  const fragment=document.createDocumentFragment();
+  let lastNode=null;
+  lines.forEach((line,index)=>{
+    if(index){lastNode=document.createElement('br');fragment.appendChild(lastNode)}
+    if(line){lastNode=document.createTextNode(line);fragment.appendChild(lastNode)}
+  });
+  if(!lastNode) return;
+  range.deleteContents();
+  range.insertNode(fragment);
+  range.setStartAfter(lastNode);
+  range.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
 t.addEventListener('paste',e=>{
   const files=[...(e.clipboardData?.files||[])].filter(f=>f.type.startsWith('image/'));
   if(files.length){e.preventDefault();uploadImages(files);return;}
   const txt=e.clipboardData?.getData('text/plain')||'';
   e.preventDefault();
-  document.execCommand('insertText',false,txt);
+  insertPlainText(txt);
 });
 t.addEventListener('dragover',e=>e.preventDefault());
 t.addEventListener('drop',e=>{
